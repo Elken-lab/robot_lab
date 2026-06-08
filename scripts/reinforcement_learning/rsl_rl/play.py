@@ -138,6 +138,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.curriculum.command_levels_lin_vel = None
     env_cfg.curriculum.command_levels_ang_vel = None
 
+    # # play 调试：强制前进速度（需要时取消注释）
+    # env_cfg.commands.base_velocity.ranges.lin_vel_x = (0.3, 0.3)
+    # env_cfg.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+    # env_cfg.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+    # env_cfg.commands.base_velocity.rel_standing_envs = 0.0
+    # env_cfg.commands.base_velocity.heading_command = False
+    # env_cfg.commands.base_velocity.debug_vis = True
+
     if args_cli.keyboard:
         env_cfg.scene.num_envs = 1
         env_cfg.terminations.time_out = None
@@ -236,6 +244,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # reset environment
     obs = env.get_observations()
+    # # play 调试打印（配合上面强制命令；需要时取消注释）
+    # obs, _ = env.reset()
+    # play_step = 0
+    # init_pos_x = env.unwrapped.scene["robot"].data.root_pos_w[0, 0].item()
     timestep = 0
     # simulate environment
     while simulation_app.is_running():
@@ -246,6 +258,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             actions = policy(obs)
             # env stepping
             obs, _, dones, _ = env.step(actions)
+            # # play 调试打印
+            # play_step += 1
+            # if play_step == 1 or play_step % 100 == 0:
+            #     cmd = env.unwrapped.command_manager.get_command("base_velocity")[0]
+            #     vel_b = env.unwrapped.scene["robot"].data.root_lin_vel_b[0]
+            #     pos_x = env.unwrapped.scene["robot"].data.root_pos_w[0, 0].item()
+            #     print(
+            #         f"[play debug] step={play_step} cmd={cmd.cpu().tolist()} "
+            #         f"vx={vel_b[0].item():.3f} pos_x={pos_x:.3f} (Δx={pos_x - init_pos_x:.3f}) "
+            #         f"|action|={actions[0].abs().mean().item():.4f}"
+            #     )
             # reset recurrent states for episodes that have terminated
             if version.parse(installed_version) >= version.parse("4.0.0"):
                 policy.reset(dones)
