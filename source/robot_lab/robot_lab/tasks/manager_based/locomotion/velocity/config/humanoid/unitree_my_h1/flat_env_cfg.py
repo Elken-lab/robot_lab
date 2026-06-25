@@ -3,35 +3,28 @@
 
 from isaaclab.utils import configclass
 
-from .rough_env_cfg import UnitreeG1RoughEnvCfg
+from .rough_env_cfg import UnitreeMyH1RoughEnvCfg
 
 
 @configclass
-class UnitreeG1FlatEnvCfg(UnitreeG1RoughEnvCfg):
+class UnitreeMyH1FlatEnvCfg(UnitreeMyH1RoughEnvCfg):
+    """My_H1 Flat: plane terrain + Isaac ``H1FlatEnvCfg`` gait overrides (Flat-10 base)."""
+
     def __post_init__(self):
-        # post init of parent
         super().__post_init__()
 
-        # override rewards
-        self.rewards.base_height_l2.params["sensor_cfg"] = None
-        # change terrain to flat
+        # --- terrain: plane (match Isaac H1FlatEnvCfg) ---
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
-        # no height scan
         self.scene.height_scanner = None
+        self.scene.height_scanner_base = None
         self.observations.policy.height_scan = None
         self.observations.critic.height_scan = None
-        # no terrain curriculum
         self.curriculum.terrain_levels = None
 
-        # Rewards
-        self.rewards.track_ang_vel_z_exp.weight = 1.0
-        self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.joint_acc_l2.weight = -1.0e-7
-        self.rewards.joint_torques_l2.weight = -2.0e-6
-        self.rewards.joint_torques_l2.params["asset_cfg"].joint_names = [".*_hip_.*", ".*_knee_joint"]
+        # --- Isaac Flat: only bump feet_air vs rough (1.0 / 0.6) ---
+        self.rewards.feet_air_time.weight = 1.0
+        self.rewards.feet_air_time.params["threshold"] = 0.6
 
-        # If the weight of rewards is 0, set rewards to None
-        if self.__class__.__name__ == "UnitreeG1FlatEnvCfg":
+        if self.__class__.__name__ == "UnitreeMyH1FlatEnvCfg":
             self.disable_zero_weight_rewards()

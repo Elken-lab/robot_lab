@@ -38,6 +38,33 @@ parser.add_argument(
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
 parser.add_argument("--keyboard", action="store_true", default=False, help="Whether to use keyboard.")
+parser.add_argument(
+    "--follow", action="store_true", default=False, help="Auto-follow robot with viewport camera each step."
+)
+parser.add_argument(
+    "--hold_seconds",
+    type=float,
+    default=0.0,
+    help="Pause policy at spawn for N seconds so you can frame the viewport before stepping.",
+)
+parser.add_argument(
+    "--plane",
+    action="store_true",
+    default=False,
+    help="Override terrain to plane for play (same task/cfg, flat ground only).",
+)
+parser.add_argument(
+    "--forward",
+    action="store_true",
+    default=False,
+    help="Pin a constant forward velocity command (disables standing/heading resampling).",
+)
+parser.add_argument(
+    "--forward_vel",
+    type=float,
+    default=0.3,
+    help="Forward speed (m/s) when --forward is set.",
+)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -83,6 +110,7 @@ from isaaclab.envs import (
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.utils.assets import retrieve_file_path
 from isaaclab.utils.dict import print_dict
+from isaaclab.utils.math import euler_xyz_from_quat
 
 from isaaclab_rl.rsl_rl import (
     RslRlBaseRunnerCfg,
@@ -124,8 +152,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # spawn the robot randomly in the grid (instead of their terrain levels)
     env_cfg.scene.terrain.max_init_terrain_level = None
-    # reduce the number of terrains to save memory
-    if env_cfg.scene.terrain.terrain_generator is not None:
+    if args_cli.plane:
+        print("[INFO] Play terrain override: plane (flat ground).")
+        env_cfg.scene.terrain.terrain_type = "plane"
+        env_cfg.scene.terrain.terrain_generator = None
+        if hasattr(env_cfg.curriculum, "terrain_levels"):
+            env_cfg.curriculum.terrain_levels = None
+    elif env_cfg.scene.terrain.terrain_generator is not None:
+        # reduce the number of terrains to save memory
         env_cfg.scene.terrain.terrain_generator.num_rows = 5
         env_cfg.scene.terrain.terrain_generator.num_cols = 5
         env_cfg.scene.terrain.terrain_generator.curriculum = False
@@ -138,13 +172,20 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.curriculum.command_levels_lin_vel = None
     env_cfg.curriculum.command_levels_ang_vel = None
 
-    # # play 调试：强制前进速度（需要时取消注释）
-    # env_cfg.commands.base_velocity.ranges.lin_vel_x = (0.3, 0.3)
-    # env_cfg.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-    # env_cfg.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
-    # env_cfg.commands.base_velocity.rel_standing_envs = 0.0
-    # env_cfg.commands.base_velocity.heading_command = False
-    # env_cfg.commands.base_velocity.debug_vis = True
+    if args_cli.forward and args_cli.keyboard:
+        raise ValueError("Use either --forward or --keyboard, not both.")
+
+    if args_cli.forward:
+        forward_vel = args_cli.forward_vel
+        print(f"[INFO] Play command override: constant forward vx={forward_vel:.2f} m/s.")
+        env_cfg.commands.base_velocity.resampling_time_range = (1.0e9, 1.0e9)
+        env_cfg.commands.base_velocity.rel_standing_envs = 0.0
+        env_cfg.commands.base_velocity.rel_heading_envs = 0.0
+        env_cfg.commands.base_velocity.heading_command = False
+        env_cfg.commands.base_velocity.ranges.lin_vel_x = (forward_vel, forward_vel)
+        env_cfg.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        env_cfg.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        env_cfg.commands.base_velocity.debug_vis = True
 
     if args_cli.keyboard:
         env_cfg.scene.num_envs = 1
@@ -244,31 +285,117 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # reset environment
     obs = env.get_observations()
-    # # play 调试打印（配合上面强制命令；需要时取消注释）
-    # obs, _ = env.reset()
-    # play_step = 0
-    # init_pos_x = env.unwrapped.scene["robot"].data.root_pos_w[0, 0].item()
+    obs, _ = env.reset()
+    play_step = 0
+    init_pos_x = env.unwrapped.scene["robot"].data.root_pos_w[0, 0].item()
     timestep = 0
+
+    if args_cli.hold_seconds > 0.0:
+        print(
+            f"[INFO] Holding {args_cli.hold_seconds:.1f}s at spawn (policy paused). "
+            "Frame the viewport now; use --follow to auto-track the robot."
+        )
+        hold_until = time.time() + args_cli.hold_seconds
+        while simulation_app.is_running() and time.time() < hold_until:
+            env.unwrapped.sim.render()
+            if args_cli.follow or args_cli.keyboard:
+                camera_follow(env)
+            time.sleep(0.02)
+
+    robot = env.unwrapped.scene["robot"]
+    body_names = list(getattr(robot.data, "body_names", getattr(robot, "body_names", [])))
+    left_foot_idx = next((i for i, name in enumerate(body_names) if name == "left_ankle_link"), None)
+    right_foot_idx = next((i for i, name in enumerate(body_names) if name == "right_ankle_link"), None)
+    try:
+        contact_sensor = env.unwrapped.scene["contact_forces"]
+        contact_body_names = list(
+            getattr(contact_sensor, "body_names", getattr(contact_sensor.data, "body_names", body_names))
+        )
+    except Exception:
+        contact_sensor = None
+        contact_body_names = body_names
+
+    def _contact_body_index(body_name: str, fallback_idx: int | None) -> int | None:
+        if body_name in contact_body_names:
+            return contact_body_names.index(body_name)
+        if contact_sensor is not None and fallback_idx is not None:
+            forces = contact_sensor.data.net_forces_w
+            if forces.shape[1] == len(body_names):
+                return fallback_idx
+        return None
+
+    left_contact_idx = _contact_body_index("left_ankle_link", left_foot_idx)
+    right_contact_idx = _contact_body_index("right_ankle_link", right_foot_idx)
+
+    def _wrap_to_pi(angle: torch.Tensor) -> torch.Tensor:
+        """Normalize Isaac Lab Euler angles from [0, 2*pi] to [-pi, pi]."""
+        return (angle + torch.pi) % (2.0 * torch.pi) - torch.pi
+
+    def _foot_z(body_idx: int | None) -> float:
+        if body_idx is None:
+            return float("nan")
+        return robot.data.body_pos_w[0, body_idx, 2].item()
+
+    def _foot_contact(contact_idx: int | None) -> bool:
+        if contact_sensor is None or contact_idx is None:
+            return False
+        force_norm = torch.norm(contact_sensor.data.net_forces_w[0, contact_idx]).item()
+        return force_norm > 5.0
+
+    def _pin_forward_command() -> None:
+        if not args_cli.forward:
+            return
+        cmd_term = env.unwrapped.command_manager.get_term("base_velocity")
+        forward = torch.tensor(
+            [args_cli.forward_vel, 0.0, 0.0], device=env.unwrapped.device, dtype=torch.float32
+        )
+        cmd_term.is_standing_env[:] = False
+        if hasattr(cmd_term, "is_heading_env"):
+            cmd_term.is_heading_env[:] = False
+        cmd_term.vel_command_b[:] = forward.unsqueeze(0).expand(env.unwrapped.num_envs, -1)
+
+    _pin_forward_command()
+
     # simulate environment
     while simulation_app.is_running():
         start_time = time.time()
         # run everything in inference mode
         with torch.inference_mode():
+            _pin_forward_command()
             # agent stepping
             actions = policy(obs)
             # env stepping
             obs, _, dones, _ = env.step(actions)
-            # # play 调试打印
-            # play_step += 1
-            # if play_step == 1 or play_step % 100 == 0:
-            #     cmd = env.unwrapped.command_manager.get_command("base_velocity")[0]
-            #     vel_b = env.unwrapped.scene["robot"].data.root_lin_vel_b[0]
-            #     pos_x = env.unwrapped.scene["robot"].data.root_pos_w[0, 0].item()
-            #     print(
-            #         f"[play debug] step={play_step} cmd={cmd.cpu().tolist()} "
-            #         f"vx={vel_b[0].item():.3f} pos_x={pos_x:.3f} (Δx={pos_x - init_pos_x:.3f}) "
-            #         f"|action|={actions[0].abs().mean().item():.4f}"
-            #     )
+            if args_cli.forward and bool(dones[0].item() if torch.is_tensor(dones) else dones[0]):
+                _pin_forward_command()
+            play_step += 1
+            if play_step == 1 or play_step % 100 == 0:
+                cmd = env.unwrapped.command_manager.get_command("base_velocity")[0]
+                robot_data = env.unwrapped.scene["robot"].data
+                vel_b = robot_data.root_lin_vel_b[0]
+                root_pos = robot_data.root_pos_w[0]
+                pos_x = root_pos[0].item()
+                base_z = root_pos[2].item()
+                roll, pitch, yaw = euler_xyz_from_quat(robot_data.root_quat_w[0:1])
+                roll = _wrap_to_pi(roll)[0].item()
+                pitch = _wrap_to_pi(pitch)[0].item()
+                yaw = _wrap_to_pi(yaw)[0].item()
+                done = bool(dones[0].item()) if torch.is_tensor(dones) else bool(dones[0])
+                fallen = base_z < 0.55 or abs(roll) > 0.8 or abs(pitch) > 0.8
+                left_foot_z = _foot_z(left_foot_idx)
+                right_foot_z = _foot_z(right_foot_idx)
+                left_contact = _foot_contact(left_contact_idx)
+                right_contact = _foot_contact(right_contact_idx)
+                print(
+                    f"[play debug] step={play_step} cmd={cmd.cpu().tolist()} "
+                    f"vx={vel_b[0].item():.3f} pos_x={pos_x:.3f} (Δx={pos_x - init_pos_x:.3f}) "
+                    f"base_z={base_z:.3f} roll={roll:.3f} pitch={pitch:.3f} yaw={yaw:.3f} "
+                    f"left_foot_z={left_foot_z:.3f} right_foot_z={right_foot_z:.3f} "
+                    f"left_contact={left_contact} right_contact={right_contact} "
+                    f"fallen={fallen} done={done} |action|={actions[0].abs().mean().item():.4f}"
+                )
+            if play_step >= 500:
+                break
             # reset recurrent states for episodes that have terminated
             if version.parse(installed_version) >= version.parse("4.0.0"):
                 policy.reset(dones)
@@ -280,7 +407,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if timestep == args_cli.video_length:
                 break
 
-        if args_cli.keyboard:
+        if args_cli.follow or args_cli.keyboard:
             camera_follow(env)
 
         # time delay for real-time evaluation

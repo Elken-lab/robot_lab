@@ -24,7 +24,7 @@ class UnitreeMyH1RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.008,
+        entropy_coef=0.01,
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,
@@ -41,5 +41,8 @@ class UnitreeMyH1FlatPPORunnerCfg(UnitreeMyH1RoughPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.max_iterations = 1500
+        # Isaac Lab H1FlatPPORunnerCfg
+        self.max_iterations = 1000
         self.experiment_name = "unitree_my_h1_flat"
+        self.policy.actor_hidden_dims = [128, 128, 128]
+        self.policy.critic_hidden_dims = [128, 128, 128]

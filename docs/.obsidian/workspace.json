@@ -1,0 +1,224 @@
+{
+  "main": {
+    "id": "ad61d8e2ab935a3a",
+    "type": "split",
+    "children": [
+      {
+        "id": "48859208b0d62b58",
+        "type": "tabs",
+        "dimension": 15.126737530662304,
+        "children": [
+          {
+            "id": "ba6724275e8b136d",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "KNOWLEDGE.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "KNOWLEDGE 的大纲"
+            },
+            "group": "4ae17366528d3642"
+          }
+        ]
+      },
+      {
+        "id": "9d5161ca66e66ca6",
+        "type": "tabs",
+        "dimension": 84.8732624693377,
+        "children": [
+          {
+            "id": "7d649727407a64f3",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "新标签页"
+            },
+            "group": "4ae17366528d3642"
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "0ca29f8a38c6979a",
+    "type": "split",
+    "children": [
+      {
+        "id": "d0f2d60002eb3ee7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5d1a61e93bb51c8a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": true
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "7e10ffe23d0a99ce",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "415f670e9a28681d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "right": {
+    "id": "d056c7dae314ea89",
+    "type": "split",
+    "children": [
+      {
+        "id": "77403b28b9e9207f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6f93cff30000f39c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "KNOWLEDGE.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "KNOWLEDGE 的反向链接列表"
+            }
+          },
+          {
+            "id": "327ea627a85efe17",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "KNOWLEDGE.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "KNOWLEDGE 的出链列表"
+            }
+          },
+          {
+            "id": "5aedda28e88ed184",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "e9ea9578aadc9cd3",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "406180f0da545e62",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "KNOWLEDGE.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "KNOWLEDGE 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "ba6724275e8b136d",
+  "lastOpenFiles": [
+    "images/run22_play_2000_single_leg.png",
+    "images/run22_play_500_early.png",
+    "images/run22_tensorboard_23556.png",
+    "images/run21_tensorboard_4563.png",
+    "images/run21_play_2000_single_leg.png",
+    "images/run20_play_1000_single_leg.png",
+    "images/run20_tensorboard_1038.png",
+    "images/flat10_play_1000_pass.png",
+    "images/flat10_play_4000_fail.png",
+    "images/flat10_tensorboard_4000.png",
+    "images/flat9_play_13550_high_lift.png",
+    "LEARNING.md",
+    "KNOWLEDGE.md"
+  ]
+}
